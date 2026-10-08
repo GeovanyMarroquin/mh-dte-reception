@@ -1,0 +1,212 @@
+{
+  "info": {
+    "_postman_id": "75d37888-c5c1-44ad-ad13-06b850c58fb1",
+    "name": "MH - Recepción DTE Mock",
+    "description": "Colección para probar la autenticación simulada y la recepción de DTE del mock local. La petición de recepción requiere un documento JWS; sustituye la variable documentoJws por el JWS de tu DTE firmado.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8085",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "documentoJws",
+      "value": "eyJhbGciOiJub25lIn0.eyJpZGVudGlmaWNhY2lvbiI6eyJ0aXBvRHRlIjoiMDEiLCJjb2RpZ29HZW5lcmFjaW9uIjoiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAwIn0sImVtaXNvciI6eyJuaXQiOiIwNjE0LTI4MDM5MC0xMTItMSJ9fQ.",
+      "type": "string"
+    },
+    {
+      "key": "nitEmisor",
+      "value": "06142803901121",
+      "type": "string"
+    },
+    {
+      "key": "tdte",
+      "value": "01",
+      "type": "string"
+    },
+    {
+      "key": "codigoGeneracion",
+      "value": "00000000-0000-4000-8000-000000000000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Autenticación",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "user",
+              "value": "{{user}}",
+              "type": "text"
+            },
+            {
+              "key": "pwd",
+              "value": "{{pwd}}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/seguridad/auth",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "seguridad",
+            "auth"
+          ]
+        },
+        "description": "Envía usuario y contraseña como formulario. Guarda automáticamente el token de la respuesta para la petición de recepción."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Autenticación responde HTTP 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const response = pm.response.json();",
+              "if (response.body && response.body.token) {",
+              "    pm.collectionVariables.set('token', response.body.token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recepción DTE",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ambiente\": \"00\",\n  \"idEnvio\": 1,\n  \"version\": 1,\n  \"tipoDte\": \"01\",\n  \"documento\": \"{{documentoJws}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/fesv/recepciondte",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "fesv",
+            "recepciondte"
+          ]
+        },
+        "description": "Envía el wrapper de recepción con Authorization Bearer. El JWS de ejemplo solo permite comprobar desempaquetado y será rechazado por no incluir la estructura DTE completa. Sustituye documentoJws por un JWS cuyo payload cumpla el schema correspondiente."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Respuesta de recepción HTTP 200 o 400', function () {",
+              "    pm.expect([200, 400]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Consulta DTE",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "User-Agent",
+            "value": "PostmanRuntime/7.45.0"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nitEmisor\": \"{{nitEmisor}}\",\n  \"tdte\": \"{{tdte}}\",\n  \"codigoGeneracion\": \"{{codigoGeneracion}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/fesv/recepcion/consultadte",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "fesv",
+            "recepcion",
+            "consultadte"
+          ]
+        },
+        "description": "Consulta por NIT del emisor, tipo de DTE y código de generación. El User-Agent es obligatorio. Usa los valores de variables que coincidan con los incluidos en el payload JWS."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Consulta responde con DTE o no encontrado', function () {",
+              "    pm.expect([200, 400]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

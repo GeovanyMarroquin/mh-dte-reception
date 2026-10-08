@@ -1,0 +1,18 @@
+services:
+  mh-dte-reception:
+    container_name: dte-reception-container
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mh-dte-reception:local
+    ports:
+      - "8085:8085"
+    environment:
+      SERVER_PORT: 8085
+      DTE_DB_PATH: /app/data/dte_mock.db
+    volumes:
+      - dte-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  dte-data:
