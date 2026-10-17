@@ -23,8 +23,8 @@ public class DteSchemaValidatorService {
             Map.entry("05", "fe-nc-v4.json"),
             Map.entry("06", "fe-nd-v4.json"),
             Map.entry("07", "fe-cr-v2.json"),
-            Map.entry("08", "fe-dcl-v2.json"),
-            Map.entry("09", "fe-cl-v2.json"),
+            Map.entry("08", "fe-cl-v2.json"),
+            Map.entry("09", "fe-dcl-v2.json"),
             Map.entry("11", "fe-fex-v3.json"),
             Map.entry("14", "fe-fse-v2.json"),
             Map.entry("15", "fe-cd-v2.json")
