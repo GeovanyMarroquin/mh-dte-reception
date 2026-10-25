@@ -19,7 +19,7 @@ los endpoints esperados, pero sus respuestas son simuladas.
 
 - Valida la estructura del JSON contra los schemas oficiales incluidos en el proyecto.
 - Desempaqueta el payload de un JWS para obtener el JSON que se valida.
-- Simula autenticación, recepción y consulta usando datos locales.
+- Simula autenticación, recepción, anulación y consulta usando datos locales.
 - No autentica credenciales ni verifica firmas criptográficas.
 - No envía, recibe ni registra documentos ante Hacienda.
 - No implementa reglas de negocio adicionales fuera de los schemas incluidos.
@@ -129,6 +129,47 @@ conserva `identificacion.codigoGeneracion` cuando está disponible; de lo contra
 
 Si no hay schema configurado, el documento no cumple el schema o el payload no se puede decodificar, responde
 `400 Bad Request`. La respuesta incluye `estado: RECHAZADO`, `codigoMsg: ERROR_CODIGO` y las observaciones encontradas.
+
+### Anulación de DTE
+
+`POST /fesv/anulardte` recibe un objeto JSON con la estructura del sobre de anulación. `documento` debe ser un JWS
+compacto de tres segmentos, cuyo payload sea el evento de invalidación codificado en Base64URL (o Base64) y cumpla
+`v3/invalidacion-schema-v3.json` (incluido `identificacion.version: 3`). A diferencia de la recepción, el sobre no
+incluye `tipoDte`.
+
+```json
+{
+  "ambiente": "00",
+  "idEnvio": 1,
+  "version": 3,
+  "documento": "<header-base64url>.<payload-invalidacion-base64url>.<firma>"
+}
+```
+
+Ejemplo de llamada:
+
+```bash
+curl -X POST http://localhost:8085/fesv/anulardte \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer mock-token' \
+  --data @anulacion.json
+```
+
+El header `Authorization` se exige únicamente con el formato `Bearer <valor>` para imitar la interfaz; el mock no
+autentica el token. Tampoco comprueba la firma JWS: solo decodifica el payload y valida el JSON resultante.
+
+#### Resultado procesado
+
+Si el evento cumple el schema, responde `200 OK` con `estado: PROCESADO`, `codigoMsg: 001` y
+`descripcionMsg: Invalidación Recibida y Procesada`. La respuesta sigue el contrato de anulación (`version: 2`,
+`versionApp: 1`, sin `clasificaMsg`) y `observaciones` es `null`.
+
+#### Resultado rechazado
+
+Si el evento no cumple el schema o el payload no se puede decodificar, responde `400 Bad Request` con
+`estado: RECHAZADO`, `codigoMsg: ERROR_CODIGO`, `selloRecibido: null`, `fhProcesamiento: null` y las observaciones
+encontradas. El endpoint es stateless: valida y simula la respuesta sin persistir ni modificar el estado del DTE
+original.
 
 ## Schemas soportados
 

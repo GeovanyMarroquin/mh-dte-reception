@@ -1,5 +1,7 @@
 package com.digital.reception.service;
 
+import com.digital.reception.dto.AnulacionRequest;
+import com.digital.reception.dto.AnulacionResponse;
 import com.digital.reception.dto.ConsultaDteRequest;
 import com.digital.reception.dto.ConsultDteResult;
 import com.digital.reception.dto.DteResponse;
@@ -31,6 +33,8 @@ public class DteService {
     private final DteSchemaValidatorService schemaValidator;
     private final DteRepository repository;
     private final Clock clock = Clock.systemDefaultZone();
+    private static final String PROCESADO = "PROCESADO";
+    private static final String RECHAZADO = "RECHAZADO";
 
     @Transactional
     public DteResponse receive(ReceptionRequest request) throws Exception {
@@ -58,7 +62,7 @@ public class DteService {
         String numeroControl = textOrNull(identification.path("numeroControl"));
         String selloRecibido = valid ? newReceiptSeal() : null;
         String processingTime = LocalDateTime.now(clock).format(PROCESSING_TIME);
-        String estado = valid ? "PROCESADO" : "RECHAZADO";
+        String estado = valid ? PROCESADO : RECHAZADO;
         String clasificaMsg = valid ? "10" : null;
         String codigoMsg = valid ? "001" : "ERROR_CODIGO";
         String descripcionMsg = valid ? "RECIBIDO" : "RECHAZADO POR REGLAS DE ESTRUCTURA Y SCHEMA";
@@ -77,6 +81,37 @@ public class DteService {
                 reception.getObservaciones(), new TypeReference<>() {
                 });
         return getResponse(reception, observations);
+    }
+
+    public AnulacionResponse annul(AnulacionRequest request) {
+        String envelopeAmbiente = request == null ? null : request.ambiente();
+        try {
+            if (request == null || request.documento() == null || request.documento().isBlank()) {
+                throw new IllegalArgumentException("El documento JWS es obligatorio");
+            }
+            String eventJson = JwsDecoderUtil.decodePayload(request.documento());
+            JsonNode evento = objectMapper.readTree(eventJson);
+            JsonNode identificacion = evento.path("identificacion");
+            String codigoGeneracion = textOrNull(identificacion.path("codigoGeneracion"));
+            String ambiente = firstNonBlank(textOrNull(identificacion.path("ambiente")), envelopeAmbiente, "00");
+
+            List<String> observations = schemaValidator.validate(evento, null, "invalidacion");
+            if (observations.isEmpty()) {
+                String processingTime = LocalDateTime.now(clock).format(PROCESSING_TIME);
+                return new AnulacionResponse(2, ambiente, 1, PROCESADO, codigoGeneracion,
+                        newReceiptSeal(), processingTime, "001", "Invalidación Recibida y Procesada", null);
+            }
+            return rejectedAnnulment(codigoGeneracion, ambiente, observations);
+        } catch (Exception exception) {
+            String message = exception.getMessage() == null ? exception.toString() : exception.getMessage();
+            return rejectedAnnulment(null, firstNonBlank(envelopeAmbiente, "00"), List.of(message));
+        }
+    }
+
+    private static AnulacionResponse rejectedAnnulment(String codigoGeneracion, String ambiente,
+                                                      List<String> observations) {
+        return new AnulacionResponse(2, ambiente, 1, RECHAZADO, codigoGeneracion, null, null,
+                "ERROR_CODIGO", "RECHAZADO POR REGLAS DE ESTRUCTURA Y SCHEMA", observations);
     }
 
     @Transactional
@@ -100,7 +135,7 @@ public class DteService {
         try {
             List<String> observations = objectMapper.readValue(reception.getObservaciones(), new TypeReference<>() {
             });
-            boolean processed = "PROCESADO".equals(reception.getEstado());
+            boolean processed = PROCESADO.equals(reception.getEstado());
             DteResponse response = getResponse(reception, processed ? observations : null);
             return new ConsultDteResult(processed ? 200 : 400, response);
         } catch (Exception exception) {
@@ -126,7 +161,7 @@ public class DteService {
 
     private ConsultDteResult notFoundResult(String codigoGeneracion) {
         DteResponse response = new DteResponse(2,
-                "00", 2, "RECHAZADO", codigoGeneracion, null,
+                "00", 2, RECHAZADO, codigoGeneracion, null,
                 LocalDateTime.now(clock).format(PROCESSING_TIME), null, "301", "DOCUMENTO NO EXISTE",
                 null);
         return new ConsultDteResult(400, response);

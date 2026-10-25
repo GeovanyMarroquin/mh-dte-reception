@@ -65,6 +65,21 @@ public class DteController {
         return ResponseEntity.status(result.httpStatus()).body(result.response());
     }
 
+    @PostMapping(
+            path = "/fesv/anulardte",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public ResponseEntity<AnulacionResponse> annul(
+            @RequestHeader("Authorization") String authorization,
+            @RequestBody AnulacionRequest request
+    ) {
+        log.info("Endpoint 3 {}", "/fesv/anulardte");
+        requireBearerToken(authorization);
+        AnulacionResponse response = dteService.annul(request);
+        return ResponseEntity.status("PROCESADO".equals(response.estado()) ? 200 : 400).body(response);
+    }
+
     private void requireBearerToken(String authorization) {
         if (authorization == null || !authorization.regionMatches(true, 0, "Bearer ", 0, 7)
                 || authorization.substring(7).isBlank()) {

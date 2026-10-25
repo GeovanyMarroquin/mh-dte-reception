@@ -1,7 +1,9 @@
 package com.digital.reception.exception;
 
+import com.digital.reception.dto.AnulacionResponse;
 import com.digital.reception.dto.DteResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -18,7 +20,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({IllegalArgumentException.class, JsonProcessingException.class,
             HttpMessageNotReadableException.class})
-    public ResponseEntity<DteResponse> handleInvalidPayload(Exception exception) {
+    public ResponseEntity<?> handleInvalidPayload(Exception exception, HttpServletRequest request) {
+        String path = request == null ? "" : request.getRequestURI();
+        if (path != null && path.contains("/fesv/anulardte")) {
+            AnulacionResponse response = new AnulacionResponse(2, "00", 1, "RECHAZADO", null, null, null,
+                    "ERROR_CODIGO", "RECHAZADO POR REGLAS DE ESTRUCTURA Y SCHEMA",
+                    List.of(exception.getMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
         DteResponse response = new DteResponse(2, "00", 2, "RECHAZADO", null, null,
                 LocalDateTime.now().format(PROCESSING_TIME), null, "ERROR_CODIGO",
                 "RECHAZADO POR REGLAS DE ESTRUCTURA Y SCHEMA", List.of(exception.getMessage()));

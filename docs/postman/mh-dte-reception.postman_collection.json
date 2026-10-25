@@ -35,6 +35,11 @@
       "key": "codigoGeneracion",
       "value": "00000000-0000-4000-8000-000000000000",
       "type": "string"
+    },
+    {
+      "key": "documentoJwsAnulacion",
+      "value": "eyJhbGciOiJub25lIn0.eyJpZGVudGlmaWNhY2lvbiI6eyJ2ZXJzaW9uIjozLCJhbWJpZW50ZSI6IjAwIiwiY29kaWdvR2VuZXJhY2lvbiI6IkNGODlCMjFFLTQyNjgtNDcxMS04MzJELThBNTQ4NjZCMTc2MyJ9fQ.",
+      "type": "string"
     }
   ],
   "item": [
@@ -141,6 +146,61 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('Respuesta de recepción HTTP 200 o 400', function () {",
+              "    pm.expect([200, 400]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anulación DTE",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ambiente\": \"00\",\n  \"idEnvio\": 1,\n  \"version\": 3,\n  \"documento\": \"{{documentoJwsAnulacion}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/fesv/anulardte",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "fesv",
+            "anulardte"
+          ]
+        },
+        "description": "Envía el sobre de anulación con Authorization Bearer. El payload JWS debe cumplir v3/invalidacion-schema-v3.json. El JWS de ejemplo solo permite comprobar desempaquetado y será rechazado por no incluir el evento completo. Sustituye documentoJwsAnulacion por un JWS cuyo payload sea el evento de invalidación firmado."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Respuesta de anulación HTTP 200 o 400', function () {",
               "    pm.expect([200, 400]).to.include(pm.response.code);",
               "});"
             ]
